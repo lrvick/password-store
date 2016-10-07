@@ -17,14 +17,30 @@ X_SELECTION="${PASSWORD_STORE_X_SELECTION:-clipboard}"
 CLIP_TIME="${PASSWORD_STORE_CLIP_TIME:-45}"
 GENERATED_LENGTH="${PASSWORD_STORE_GENERATED_LENGTH:-25}"
 
-export GIT_DIR="${PASSWORD_STORE_GIT:-$PREFIX}/.git"
 export GIT_WORK_TREE="${PASSWORD_STORE_GIT:-$PREFIX}"
+export GIT_DIR="$GIT_WORK_TREE/.git"
 
 #
 # BEGIN helper functions
 #
-
+git_set_dir() {
+	local gwt="${PASSWORD_STORE_GIT:-$PREFIX}"; gwt="${gwt%/}"
+	[[ "$1" == "." ]] && return
+	[[ "$1" == "$gwt" ]] && return
+	if [ "$1" != "${1#/}" ]; then
+		local dir="$1"
+	else
+		local dir="$gwt/$1"
+	fi
+	if [[ -d "$dir/.git" ]]; then
+		export GIT_WORK_TREE="$dir"
+		export GIT_DIR="$dir/.git"
+	else
+		git_set_dir "$(dirname "$dir")"
+	fi
+}
 git_add_file() {
+	git_set_dir "$1"
 	[[ -d $GIT_DIR ]] || return
 	git add "$1" || return
 	[[ -n $(git status --porcelain "$1") ]] || return
@@ -450,6 +466,7 @@ cmd_generate() {
 	[[ ! $length =~ ^[0-9]+$ ]] && die "Error: pass-length \"$length\" must be a number."
 	mkdir -p -v "$PREFIX/$(dirname "$path")"
 	set_gpg_recipients "$(dirname "$path")"
+	git_set_dir "$path"
 	local passfile="$PREFIX/$path.gpg"
 
 	[[ $inplace -eq 0 && $force -eq 0 && -e $passfile ]] && yesno "An entry already exists for $path. Overwrite it?"
@@ -500,6 +517,7 @@ cmd_delete() {
 	[[ $force -eq 1 ]] || yesno "Are you sure you would like to delete $path?"
 
 	rm $recursive -f -v "$passfile"
+	git_set_dir "$path"
 	if [[ -d $GIT_DIR && ! -e $passfile ]]; then
 		git rm -qr "$passfile"
 		git_commit "Remove $path from store."
@@ -555,10 +573,18 @@ cmd_copy_move() {
 
 cmd_git() {
 	if [[ $1 == "init" ]]; then
+		if [[ $2 ]]; then
+			local dir="$GIT_WORK_TREE/${@: -1}"
+			echo "init at $dir"
+			if [[ -d "$dir" ]]; then
+				export GIT_WORK_TREE="$dir"
+				export GIT_DIR="$GIT_WORK_TREE/.git"
+			fi
+		fi
 		git "$@" || exit 1
-		git_add_file "$PREFIX" "Add current contents of password store."
+		git_add_file "$GIT_WORK_TREE" "Add current contents of password store."
 
-		echo '*.gpg diff=gpg' > "$PREFIX/.gitattributes"
+		echo '*.gpg diff=gpg' > "$GIT_WORK_TREE/.gitattributes"
 		git_add_file .gitattributes "Configure git repository for gpg file diff."
 		git config --local diff.gpg.binary true
 		git config --local diff.gpg.textconv "$GPG -d ${GPG_OPTS[*]}"
