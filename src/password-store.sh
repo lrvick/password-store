@@ -516,7 +516,7 @@ cmd_delete() {
 
 	rm $recursive -f -v "$passfile"
 	git_set_dir "$path"
-	if [[ -d $GIT_DIR && ! -e $passfile ]]; then
+	if [[ ! -e $passfile ]]; then
 		git rm -qr "$passfile"
 		git_commit "Remove $path from store."
 	fi
