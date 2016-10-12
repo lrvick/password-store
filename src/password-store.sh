@@ -32,7 +32,7 @@ git_set_dir() {
 	else
 		local dir="$gwt/$1"
 	fi
-	if [[ -d "$dir/.git" ]]; then
+	if [[ -d "$dir/.git" ]] || [[ -f "$dir/.git" ]]; then
 		export GIT_WORK_TREE="$dir"
 		export GIT_DIR="$dir/.git"
 	else
@@ -41,14 +41,12 @@ git_set_dir() {
 }
 git_add_file() {
 	git_set_dir "$1"
-	[[ -d $GIT_DIR ]] || return
 	git add "$1" || return
 	[[ -n $(git status --porcelain "$1") ]] || return
 	git_commit "$2"
 }
 git_commit() {
 	local sign=""
-	[[ -d $GIT_DIR ]] || return
 	[[ $(git config --bool --get pass.signcommits) == "true" ]] && sign="-S"
 	git commit $sign -m "$1"
 }
@@ -588,6 +586,8 @@ cmd_git() {
 		git_add_file .gitattributes "Configure git repository for gpg file diff."
 		git config --local diff.gpg.binary true
 		git config --local diff.gpg.textconv "$GPG -d ${GPG_OPTS[*]}"
+	elif [[ $1 == "submodule" ]]; then
+		git -C "$GIT_WORK_TREE" "$@"
 	elif [[ -d $GIT_DIR ]]; then
 		tmpdir nowarn #Defines $SECURE_TMPDIR. We don't warn, because at most, this only copies encrypted files.
 		export TMPDIR="$SECURE_TMPDIR"
