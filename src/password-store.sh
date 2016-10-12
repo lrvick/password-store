@@ -32,7 +32,7 @@ git_set_dir() {
 	else
 		local dir="$gwt/$1"
 	fi
-	if [[ -d "$dir/.git" ]] || [[ -f "$dir/.git" ]]; then
+	if [[ -e "$dir/.git" ]]; then
 		export GIT_WORK_TREE="$dir"
 		export GIT_DIR="$dir/.git"
 	else
@@ -291,7 +291,7 @@ cmd_init() {
 	if [[ $# -eq 1 && -z $1 ]]; then
 		[[ ! -f "$gpg_id" ]] && die "Error: $gpg_id does not exist and so cannot be removed."
 		rm -v -f "$gpg_id" || exit 1
-		if [[ -d $GIT_DIR ]]; then
+		if [[ -e $GIT_DIR ]]; then
 			git rm -qr "$gpg_id"
 			git_commit "Deinitialize ${gpg_id}${id_path:+ ($id_path)}."
 		fi
@@ -557,7 +557,7 @@ cmd_copy_move() {
 		mv $interactive -v "$old_path" "$new_path" || exit 1
 		[[ -e "$new_path" ]] && reencrypt_path "$new_path"
 
-		if [[ -d $GIT_DIR && ! -e $old_path ]]; then
+		if [[ -e $GIT_DIR && ! -e $old_path ]]; then
 			git rm -qr "$old_path"
 			git_add_file "$new_path" "Rename ${1} to ${2}."
 		fi
@@ -588,7 +588,7 @@ cmd_git() {
 		git config --local diff.gpg.textconv "$GPG -d ${GPG_OPTS[*]}"
 	elif [[ $1 == "submodule" ]]; then
 		git -C "$GIT_WORK_TREE" "$@"
-	elif [[ -d $GIT_DIR ]]; then
+	elif [[ -e $GIT_DIR ]]; then
 		tmpdir nowarn #Defines $SECURE_TMPDIR. We don't warn, because at most, this only copies encrypted files.
 		export TMPDIR="$SECURE_TMPDIR"
 		git "$@"
