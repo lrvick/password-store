@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-test_description='Test multiple git repos'
+test_description='Test git submodules'
 cd "$(dirname "$0")"
 . ./setup.sh
 
