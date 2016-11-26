@@ -301,11 +301,15 @@ cmd_init() {
 		printf "%s\n" "$@" > "$gpg_id"
 		local id_print="$(printf "%s, " "$@")"
 		echo "Password store initialized for ${id_print%, }${id_path:+ ($id_path)}"
-		git_add_file "$gpg_id" "Set GPG id to ${id_print%, }${id_path:+ ($id_path)}."
+		if [[ -e $GIT_DIR ]]; then
+			git_add_file "$gpg_id" "Set GPG id to ${id_print%, }${id_path:+ ($id_path)}."
+		fi
 	fi
 
 	reencrypt_path "$PREFIX/$id_path"
-	git_add_file "$PREFIX/$id_path" "Reencrypt password store using new GPG id ${id_print%, }${id_path:+ ($id_path)}."
+	if [[ -e $GIT_DIR ]]; then
+		git_add_file "$PREFIX/$id_path" "Reencrypt password store using new GPG id ${id_print%, }${id_path:+ ($id_path)}."
+	fi
 }
 
 cmd_show() {
@@ -573,7 +577,6 @@ cmd_git() {
 	if [[ $1 == "init" ]]; then
 		if [[ $2 ]]; then
 			local dir="$GIT_WORK_TREE/${@: -1}"
-			echo "init at $dir"
 			if [[ -d "$dir" ]]; then
 				export GIT_WORK_TREE="$dir"
 				export GIT_DIR="$GIT_WORK_TREE/.git"
